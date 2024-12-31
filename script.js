@@ -1,0 +1,189 @@
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// Set canvas size
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+// Player properties
+const player = {
+    x: 200,
+    y: canvas.height - 200, // Initial height while standing
+    standingWidth: 200,
+    standingHeight: 200,
+    slidingWidth: 200,
+    slidingHeight: 200,
+    velocityY: 0,
+    jumping: false,
+    jumpCount: 0,
+    maxJumpCount: 2, // Maximum number of jumps (including initial jump)
+    jumpVelocity: -12, // Adjust jump velocity to make the player jump higher
+    gravity: 0.5,
+    sliding: false, // Track if player is sliding
+    running: false, // Track if player is running
+    frameIndex: 0, // Index of the current frame
+    framesRunning: [ // Array of frames for running animation
+        'character1.png',
+        'character2.png',
+        'character3.png'
+    ],
+    frameInterval: 10, // Interval between frame changes (in frames)
+    frameJump1: 'character5.png', // Frame for first jump
+    frameJump2: 'character6.png' // Frame for second jump
+};
+
+// Flags to track button states
+let slideButtonPressed = false;
+
+// Jump button
+function jump(event) {
+    if (event) event.preventDefault(); // Prevent focus during hold
+    if (player.jumpCount < player.maxJumpCount) {
+        player.velocityY = player.jumpVelocity;
+        player.jumping = true;
+        player.jumpCount++;
+        if (player.jumpCount === 1) {
+            player.framesRunning = [player.frameJump1]; // First jump animation
+        } else if (player.jumpCount === 2) {
+            player.framesRunning = [player.frameJump2]; // Second jump animation
+        }
+    }
+}
+
+// Start sliding
+function startSlide(event) {
+    if (event) event.preventDefault(); // Prevent focus during hold
+    if (!slideButtonPressed && !player.jumping) { // Disable sliding if jumping
+        slideButtonPressed = true;
+        startSlideAction();
+    }
+}
+
+function startSlideAction() {
+    player.sliding = true;
+    updatePlayerSize();
+}
+
+// End sliding
+function endSlide(event) {
+    if (event) event.preventDefault(); // Prevent focus during hold
+    slideButtonPressed = false;
+    endSlideAction();
+}
+
+function endSlideAction() {
+    player.sliding = false;
+    updatePlayerSize();
+}
+
+// Update player size based on sliding status
+function updatePlayerSize() {
+    if (player.sliding) {
+        player.standingWidth = player.slidingWidth;
+        player.standingHeight = player.slidingHeight;
+    } else {
+        player.standingWidth = 200; // Set width back to normal size
+        player.standingHeight = 200; // Set height back to normal size
+    }
+}
+
+// Reset button
+function reset(event) {
+    if (event) event.preventDefault(); // Prevent focus during hold
+    player.x = 200;
+    player.y = canvas.height - player.standingHeight - 50;
+    player.velocityY = 0;
+    player.jumping = false;
+    player.jumpCount = 0;
+    player.running = true;
+}
+
+// Load character images
+const characterImagesRunning = [];
+let loadedImagesCount = 0;
+player.framesRunning.forEach((frame, index) => {
+    const image = new Image();
+    image.src = frame;
+    image.onload = function() {
+        loadedImagesCount++; 
+        if (loadedImagesCount === player.framesRunning.length) {
+            player.running = true; // Start the game loop after all images are loaded
+        }
+    };
+    characterImagesRunning.push(image);
+});
+
+const characterImageSliding = new Image();
+characterImageSliding.src = 'character4.png'; // Load character4.png for sliding
+characterImageSliding.onload = function() {
+    loadedImagesCount++;
+    if (loadedImagesCount === player.framesRunning.length + 1) {
+        player.running = true; // Start the game loop after all images are loaded
+    }
+};
+
+const jumpImages = {
+    first: new Image(),
+    second: new Image(),
+};
+
+jumpImages.first.src = player.frameJump1;
+jumpImages.second.src = player.frameJump2;
+
+// Game loop
+function gameLoop() {
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Apply gravity
+    player.velocityY += player.gravity;
+    player.y += player.velocityY;
+
+    // Check if player is on the ground
+    if (player.y >= canvas.height - player.standingHeight - 50) {
+        player.y = canvas.height - player.standingHeight - 50;
+        player.velocityY = 0;
+        player.jumping = false;
+        player.jumpCount = 0; // Reset jump count when player touches the ground
+        if (!player.sliding) { // Reset frames to running animation only when not sliding
+            player.framesRunning = ['character1.png', 'character2.png', 'character3.png'];
+        }
+    }
+
+    // Update player size based on sliding status
+    updatePlayerSize();
+
+    // Draw player
+    if (player.jumping) {
+        const jumpImage = player.jumpCount === 1 ? jumpImages.first : jumpImages.second;
+        ctx.drawImage(jumpImage, player.x, player.y, player.standingWidth, player.standingHeight);
+    } else if (player.sliding) {
+        ctx.drawImage(characterImageSliding, player.x, player.y, player.standingWidth, player.standingHeight);
+    } else if (player.running) {
+        const currentFrameIndex = Math.floor(player.frameIndex / player.frameInterval) % player.framesRunning.length;
+        ctx.drawImage(characterImagesRunning[currentFrameIndex], player.x, player.y, player.standingWidth, player.standingHeight);
+        player.frameIndex++;
+    } else {
+        ctx.fillStyle = 'red';
+        ctx.fillRect(player.x, player.y, player.standingWidth, player.standingHeight); // Adjusted width and height for standing
+    }
+
+    requestAnimationFrame(gameLoop);
+}
+
+// Start the game loop
+gameLoop();
+
+// Full screen button
+const slideButton = document.getElementById('slideButton');
+slideButton.addEventListener('click', toggleFullScreen);
+
+function toggleFullScreen() {
+    if (!document.fullscreenElement) {
+        canvas.requestFullscreen();
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        }
+    }
+}
