@@ -1,3 +1,4 @@
+
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
@@ -35,9 +36,8 @@ const player = {
 // Flags to track button states
 let slideButtonPressed = false;
 
-// Jump button
-function jump(event) {
-    if (event) event.preventDefault(); // Prevent focus during hold
+// Jump function (responds only to ArrowUp)
+function jump() {
     if (player.jumpCount < player.maxJumpCount) {
         player.velocityY = player.jumpVelocity;
         player.jumping = true;
@@ -50,30 +50,30 @@ function jump(event) {
     }
 }
 
-// Start sliding
-function startSlide(event) {
-    if (event) event.preventDefault(); // Prevent focus during hold
+// Start sliding (shared for touch and keyboard)
+function startSlide() {
     if (!slideButtonPressed && !player.jumping) { // Disable sliding if jumping
         slideButtonPressed = true;
-        startSlideAction();
+        player.sliding = true;
+        updatePlayerSize();
     }
 }
 
-function startSlideAction() {
-    player.sliding = true;
-    updatePlayerSize();
-}
-
-// End sliding
-function endSlide(event) {
-    if (event) event.preventDefault(); // Prevent focus during hold
+// End sliding (shared for touch and keyboard)
+function endSlide() {
     slideButtonPressed = false;
-    endSlideAction();
-}
-
-function endSlideAction() {
     player.sliding = false;
     updatePlayerSize();
+}
+
+// Reset function (shared for touch and keyboard)
+function reset() {
+    player.x = 200;
+    player.y = canvas.height - player.standingHeight - 50;
+    player.velocityY = 0;
+    player.jumping = false;
+    player.jumpCount = 0;
+    player.running = true;
 }
 
 // Update player size based on sliding status
@@ -87,16 +87,26 @@ function updatePlayerSize() {
     }
 }
 
-// Reset button
-function reset(event) {
-    if (event) event.preventDefault(); // Prevent focus during hold
-    player.x = 200;
-    player.y = canvas.height - player.standingHeight - 50;
-    player.velocityY = 0;
-    player.jumping = false;
-    player.jumpCount = 0;
-    player.running = true;
-}
+// Add keyboard event listeners
+window.addEventListener('keydown', (event) => {
+    switch (event.code) {
+        case 'ArrowUp': // Jump only on Up Arrow key
+            jump();
+            break;
+        case 'ArrowDown': // Slide on Down Arrow key
+            startSlide();
+            break;
+        case 'KeyR': // Reset on 'R' key
+            reset();
+            break;
+    }
+});
+
+window.addEventListener('keyup', (event) => {
+    if (event.code === 'ArrowDown') { // End slide on Down Arrow key release
+        endSlide();
+    }
+});
 
 // Load character images
 const characterImagesRunning = [];
@@ -173,17 +183,3 @@ function gameLoop() {
 
 // Start the game loop
 gameLoop();
-
-// Full screen button
-const slideButton = document.getElementById('slideButton');
-slideButton.addEventListener('click', toggleFullScreen);
-
-function toggleFullScreen() {
-    if (!document.fullscreenElement) {
-        canvas.requestFullscreen();
-    } else {
-        if (document.exitFullscreen) {
-            document.exitFullscreen();
-        }
-    }
-}
